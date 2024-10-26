@@ -1,20 +1,21 @@
 import traceback
 
+import chainlit as cl
 import openai
 from openai.types.beta.assistant_stream_event import AssistantStreamEvent
 from openai.types.beta.threads import Text, TextDelta
 from openai.types.beta.threads.runs import RunStep
 
-import chainlit as cl
-
 from copilot import constants
+from copilot.resources import RESOURCES_ROOT
 
 
 class EventHandler(openai.AsyncAssistantEventHandler):
-    def __init__(self, assistant_name: str) -> None:
+    def __init__(self, assistant_name: str, client: openai.AsyncOpenAI) -> None:
         super().__init__()
         self.current_message: cl.Message | None = None
         self.assistant_name = assistant_name
+        self.client = client
 
     async def on_run_step_start(self, step: RunStep) -> None:
         cl.user_session.set(constants.CURRENT_RUN_STEP_KEY, step)
@@ -33,6 +34,23 @@ class EventHandler(openai.AsyncAssistantEventHandler):
     async def on_text_done(self, text: Text) -> None:
         assert self.current_message is not None
         await self.current_message.update()
+        citations = []
+        for index, annotation in enumerate(text.annotations):
+            text.value = text.value.replace(annotation.text, f"[{index}]")
+            if file_citation := getattr(annotation, "file_citation", None):
+                cited_file = await self.client.files.retrieve(file_citation.file_id)
+                citations.append(cited_file)
+        await cl.Message(
+            content="",
+            elements=[
+                cl.Pdf(
+                    name=citation.filename,
+                    display="inline",
+                    path=str(RESOURCES_ROOT / citation.filename),
+                )
+                for citation in citations
+            ],
+        ).send()
 
     async def on_event(
         self,

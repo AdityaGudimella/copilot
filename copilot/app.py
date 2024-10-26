@@ -75,6 +75,6 @@ async def on_message(message: cl.Message):
     async with client.beta.threads.runs.stream(
         thread_id=thread_id,
         assistant_id=assistant_id,
-        event_handler=EventHandler(assistant_name="Copilot"),
+        event_handler=EventHandler(assistant_name="Copilot", client=client),
     ) as stream:
         await stream.until_done()
