@@ -8,14 +8,15 @@ from copilot.ai.openai_ import (
     create_assistant,
     get_async_openai_client,
     get_openai_client,
+    get_or_create_thread,
 )
 
 
 @cl.on_chat_start
 async def on_chat_start():
     client = get_async_openai_client()
-    thread = await client.beta.threads.create()
-    cl.user_session.set(constants.THREAD_ID_KEY, thread.id)
+    thread_id = await get_or_create_thread(client)
+    cl.user_session.set(constants.THREAD_ID_KEY, thread_id)
     chat_profile = cl.user_session.get(constants.CHAT_PROFILES_KEY)
     assistant = create_assistant(
         client=get_openai_client(),
@@ -53,9 +54,6 @@ async def on_stop():
         await client.beta.threads.runs.cancel(
             thread_id=current_run_step.thread_id, run_id=current_run_step.id
         )
-    thread_id = cl.user_session.get(constants.THREAD_ID_KEY)
-    assert isinstance(thread_id, str)
-    await client.beta.threads.delete(thread_id)
     assistant_id = cl.user_session.get(constants.ASSISTANT_ID_KEY)
     assert isinstance(assistant_id, str)
     await client.beta.assistants.delete(assistant_id)
