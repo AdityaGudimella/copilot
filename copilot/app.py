@@ -2,24 +2,28 @@ import typing as t
 
 import chainlit as cl
 
-from openai.types.chat import ChatCompletionMessageParam
-
 from copilot import constants
-from copilot.openai_ import get_openai_client
+from copilot.ai.assistant_event_handler import EventHandler
+from copilot.ai.openai_ import (
+    create_assistant,
+    get_async_openai_client,
+    get_openai_client,
+)
 
 
 @cl.on_chat_start
 async def on_chat_start():
-    cl.user_session.set(
-        constants.MESSAGE_HISTORY_KEY,
-        [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant.",
-            }
-        ],
-    )
+    client = get_async_openai_client()
+    thread = await client.beta.threads.create()
+    cl.user_session.set(constants.THREAD_ID_KEY, thread.id)
     chat_profile = cl.user_session.get(constants.CHAT_PROFILES_KEY)
+    assistant = create_assistant(
+        client=get_openai_client(),
+        model=constants.get_model_for_chat_profile(
+            t.cast(constants.ChatProfiles, chat_profile)
+        ),
+    )
+    cl.user_session.set(constants.ASSISTANT_ID_KEY, assistant.id)
     await cl.Message(
         content=f"You are using the **{chat_profile}** chat profile."
     ).send()
@@ -41,28 +45,39 @@ async def chat_profiles(user: cl.User | None = None):
     ]
 
 
+@cl.on_stop
+async def on_stop():
+    client = get_async_openai_client()
+    current_run_step = cl.user_session.get(constants.CURRENT_RUN_STEP_KEY)
+    if current_run_step is not None:
+        await client.beta.threads.runs.cancel(
+            thread_id=current_run_step.thread_id, run_id=current_run_step.id
+        )
+    thread_id = cl.user_session.get(constants.THREAD_ID_KEY)
+    assert isinstance(thread_id, str)
+    await client.beta.threads.delete(thread_id)
+    assistant_id = cl.user_session.get(constants.ASSISTANT_ID_KEY)
+    assert isinstance(assistant_id, str)
+    await client.beta.assistants.delete(assistant_id)
+
+
 @cl.on_message
 async def on_message(message: cl.Message):
-    client = get_openai_client()
+    client = get_async_openai_client()
+    thread_id = cl.user_session.get(constants.THREAD_ID_KEY)
+    assert isinstance(thread_id, str)
+    assistant_id = cl.user_session.get(constants.ASSISTANT_ID_KEY)
+    assert isinstance(assistant_id, str)
 
-    message_history: list[ChatCompletionMessageParam] = cl.user_session.get(  # type: ignore
-        constants.MESSAGE_HISTORY_KEY
+    await client.beta.threads.messages.create(
+        thread_id=thread_id,
+        role="user",
+        content=message.content,
     )
-    message_history.append({"role": "user", "content": message.content})
 
-    chat_profile = cl.user_session.get(constants.CHAT_PROFILES_KEY)
-    assert chat_profile in constants.ChatProfiles, chat_profile
-    msg = cl.Message(content="")
-    response = await client.chat.completions.create(  # type: ignore
-        stream=True,
-        model=constants.get_model_for_chat_profile(
-            t.cast(constants.ChatProfiles, chat_profile)
-        ),
-        messages=message_history,
-    )
-    async for chunk in response:
-        if token := chunk.choices[0].delta.content or "":
-            await msg.stream_token(token)
-    message_history.append({"role": "assistant", "content": msg.content})
-    # Send a message back to the user
-    await msg.update()
+    async with client.beta.threads.runs.stream(
+        thread_id=thread_id,
+        assistant_id=assistant_id,
+        event_handler=EventHandler(assistant_name="Copilot"),
+    ) as stream:
+        await stream.until_done()

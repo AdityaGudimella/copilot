@@ -1,8 +1,11 @@
 import enum
 
 
+ASSISTANT_ID_KEY = "assistant_id"
 CHAT_PROFILES_KEY = "chat_profile"
-MESSAGE_HISTORY_KEY = "message_history"
+CURRENT_RUN_STEP_KEY = "current_run_step"
+THREAD_ID_KEY = "thread"
+VECTOR_STORE_ID_KEY = "vector_store_id"
 
 
 class ChatProfiles(str, enum.Enum):
