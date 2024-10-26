@@ -16,13 +16,17 @@ class CopilotSettings(pds.BaseSettings):
 async def main(message: cl.Message):
     settings = CopilotSettings()
     client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+    msg = cl.Message(content="")
     response = await client.chat.completions.create(
+        stream=True,
         model=settings.model,
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": message.content},
         ],
     )
-    content = response.choices[0].message.content
+    async for chunk in response:
+        if token := chunk.choices[0].delta.content or "":
+            await msg.stream_token(token)
     # Send a message back to the user
-    await cl.Message(content=content).send()
+    await msg.update()
