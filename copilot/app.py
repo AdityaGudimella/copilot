@@ -7,19 +7,18 @@ from copilot.ai.assistant_event_handler import EventHandler
 from copilot.ai.openai_ import (
     create_assistant,
     get_async_openai_client,
-    get_openai_client,
-    get_or_create_thread,
+    get_or_create_thread_id,
 )
 
 
 @cl.on_chat_start
 async def on_chat_start():
     client = get_async_openai_client()
-    thread_id = await get_or_create_thread(client)
+    thread_id = await get_or_create_thread_id(client)
     cl.user_session.set(constants.THREAD_ID_KEY, thread_id)
     chat_profile = cl.user_session.get(constants.CHAT_PROFILES_KEY)
-    assistant = create_assistant(
-        client=get_openai_client(),
+    assistant = await create_assistant(
+        client=client,
         model=constants.get_model_for_chat_profile(
             t.cast(constants.ChatProfiles, chat_profile)
         ),
