@@ -5,6 +5,8 @@ from openai.types.beta.assistant_tool_param import AssistantToolParam
 from openai.types.beta.vector_store import VectorStore
 
 from copilot import constants
+from copilot.ai.openai_.function_calling import get_assistant_tool_metadata
+from copilot.ai.tools import TOOL_REGISTRY
 from copilot.settings import CopilotSettings
 from copilot.utils import persist_str, retrieve_str
 
@@ -58,6 +60,10 @@ async def create_assistant(client: openai.AsyncOpenAI, model: str) -> Assistant:
     """
     tools: list[AssistantToolParam] = [
         {"type": "file_search"},
+        *[
+            get_assistant_tool_metadata(tool).as_openai_tool_spec()
+            for tool in TOOL_REGISTRY.values()
+        ],
     ]
 
     tool_resources: ToolResources = {
