@@ -1,10 +1,12 @@
-import io
+import os
 import typing as t
 
 import chainlit as cl
+from llama_index.core.node_parser import MarkdownElementNodeParser
 
 from copilot import constants
 from copilot.ai.assistant_event_handler import EventHandler
+from copilot.ai.llama_index_ import load_index, load_parser, parse_files_if_needed
 from copilot.ai.openai_ import (
     create_assistant,
     get_async_openai_client,
@@ -68,22 +70,32 @@ async def on_message(message: cl.Message):
     assert isinstance(assistant_id, str)
 
     if message.elements:
-        file_streams = []
+        vector_store = load_index()
+        parser = load_parser()
+        pdf_file_paths = {}
         for element in message.elements:
             if isinstance(element, cl.File):
-                if element.mime in constants.SUPPROTED_OPENAI_FILE_SEARCH_MIME_TYPES:
+                if element.mime == "application/pdf":
                     if element.path:
-                        file_streams.append(open(element.path, "rb"))
-                    elif element.content:
-                        if isinstance(element.content, str):
-                            file_streams.append(
-                                io.BytesIO(element.content.encode("utf-8"))
-                            )
-                        else:
-                            file_streams.append(io.BytesIO(element.content))
+                        pdf_file_paths[element.name] = element.path
                 elif element.mime == "text/csv":
                     # CSV QA
                     message.content += f"\n\nCSV file path is: {element.path}"
+        if pdf_file_paths:
+            message.content += "The user uploaded some PDFs."
+            async with cl.Step("Parsing PDFs...") as step:
+                results = await parse_files_if_needed(pdf_file_paths, parser)
+                await step.update()
+            async with cl.Step("Creating nodes...") as step:
+                node_parser = MarkdownElementNodeParser(
+                    num_workers=os.cpu_count() or 1,
+                )
+                nodes = node_parser.get_nodes_from_documents(results)
+                await step.update()
+            async with cl.Step("Inserting nodes into vector store...") as step:
+                vector_store.insert_nodes(nodes)
+                await step.update()
+            vector_store.storage_context.persist()
 
     await client.beta.threads.messages.create(
         thread_id=thread_id,

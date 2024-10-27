@@ -6,8 +6,9 @@ CHAT_PROFILES_KEY = "chat_profile"
 CURRENT_RUN_STEP_KEY = "current_run_step"
 THREAD_ID_KEY = "thread"
 
-PERSISTENCE_SETTINGS_PATH = Path.home() / ".copilot" / "settings.json"
-
+PERSISTENCE_DIR = Path.home() / ".copilot"
+PERSISTENCE_SETTINGS_PATH = PERSISTENCE_DIR / "settings.json"
+PARSED_FILES_DATA_PATH = PERSISTENCE_DIR / "parsed_files.json"
 
 SUPPROTED_OPENAI_FILE_SEARCH_MIME_TYPES = [
     "text/x-c",
