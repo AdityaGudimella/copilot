@@ -5,7 +5,6 @@ ASSISTANT_ID_KEY = "assistant_id"
 CHAT_PROFILES_KEY = "chat_profile"
 CURRENT_RUN_STEP_KEY = "current_run_step"
 THREAD_ID_KEY = "thread"
-VECTOR_STORE_ID_KEY = "vector_store_id"
 
 PERSISTENCE_SETTINGS_PATH = Path.home() / ".copilot" / "settings.json"
 

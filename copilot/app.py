@@ -9,7 +9,6 @@ from copilot.ai.openai_ import (
     create_assistant,
     get_async_openai_client,
     get_or_create_thread_id,
-    get_or_create_vector_store,
 )
 
 
@@ -69,7 +68,6 @@ async def on_message(message: cl.Message):
     assert isinstance(assistant_id, str)
 
     if message.elements:
-        vector_store = await get_or_create_vector_store(client)
         file_streams = []
         for element in message.elements:
             if isinstance(element, cl.File):
@@ -86,11 +84,6 @@ async def on_message(message: cl.Message):
                 elif element.mime == "text/csv":
                     # CSV QA
                     message.content += f"\n\nCSV file path is: {element.path}"
-        if file_streams:
-            await client.beta.vector_stores.file_batches.upload_and_poll(
-                vector_store_id=vector_store.id,
-                files=file_streams,
-            )
 
     await client.beta.threads.messages.create(
         thread_id=thread_id,
