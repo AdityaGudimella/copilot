@@ -2,7 +2,6 @@ import json
 import typing as t
 
 import chainlit as cl
-from chainlit.context import ChainlitContextException
 from llama_index.core import (
     Document,
     Settings,
