@@ -40,17 +40,18 @@ class EventHandler(openai.AsyncAssistantEventHandler):
             if file_citation := getattr(annotation, "file_citation", None):
                 cited_file = await self.client.files.retrieve(file_citation.file_id)
                 citations.append(cited_file)
-        await cl.Message(
-            content="",
-            elements=[
-                cl.Pdf(
-                    name=citation.filename,
-                    display="inline",
-                    path=str(RESOURCES_ROOT / citation.filename),
+        elements = []
+        for citation in citations:
+            if (RESOURCES_ROOT / citation.filename).exists():
+                elements.append(
+                    cl.Pdf(
+                        name=citation.filename,
+                        display="inline",
+                        path=str(RESOURCES_ROOT / citation.filename),
+                    )
                 )
-                for citation in citations
-            ],
-        ).send()
+        if elements:
+            await cl.Message(content="", elements=elements).send()
 
     async def on_event(
         self,
