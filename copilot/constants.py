@@ -10,6 +10,32 @@ VECTOR_STORE_ID_KEY = "vector_store_id"
 PERSISTENCE_SETTINGS_PATH = Path.home() / ".copilot" / "settings.json"
 
 
+SUPPROTED_OPENAI_FILE_SEARCH_MIME_TYPES = [
+    "text/x-c",
+    "text/x-c++",
+    "text/x-csharp",
+    "text/css",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/x-golang",
+    "text/html",
+    "text/x-java",
+    "text/javascript",
+    "application/json",
+    "text/markdown",
+    "application/pdf",
+    "text/x-php",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/x-python",
+    "text/x-script.python",
+    "text/x-ruby",
+    "application/x-sh",
+    "text/x-tex",
+    "application/typescript",
+    "text/plain",
+]
+
+
 class ChatProfiles(str, enum.Enum):
     GPT4oMini = "GPT-4o-mini"
     GPT4o = "GPT-4o"

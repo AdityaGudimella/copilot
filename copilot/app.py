@@ -73,17 +73,24 @@ async def on_message(message: cl.Message):
         file_streams = []
         for element in message.elements:
             if isinstance(element, cl.File):
-                if element.path:
-                    file_streams.append(open(element.path, "rb"))
-                elif element.content:
-                    if isinstance(element.content, str):
-                        file_streams.append(io.BytesIO(element.content.encode("utf-8")))
-                    else:
-                        file_streams.append(io.BytesIO(element.content))
-        await client.beta.vector_stores.file_batches.upload_and_poll(
-            vector_store_id=vector_store.id,
-            files=file_streams,
-        )
+                if element.mime in constants.SUPPROTED_OPENAI_FILE_SEARCH_MIME_TYPES:
+                    if element.path:
+                        file_streams.append(open(element.path, "rb"))
+                    elif element.content:
+                        if isinstance(element.content, str):
+                            file_streams.append(
+                                io.BytesIO(element.content.encode("utf-8"))
+                            )
+                        else:
+                            file_streams.append(io.BytesIO(element.content))
+                elif element.mime == "text/csv":
+                    # CSV QA
+                    message.content += f"\n\nCSV file path is: {element.path}"
+        if file_streams:
+            await client.beta.vector_stores.file_batches.upload_and_poll(
+                vector_store_id=vector_store.id,
+                files=file_streams,
+            )
 
     await client.beta.threads.messages.create(
         thread_id=thread_id,
