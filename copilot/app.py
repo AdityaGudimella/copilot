@@ -1,3 +1,4 @@
+import io
 import typing as t
 
 import chainlit as cl
@@ -8,6 +9,7 @@ from copilot.ai.openai_ import (
     create_assistant,
     get_async_openai_client,
     get_or_create_thread_id,
+    get_or_create_vector_store,
 )
 
 
@@ -65,6 +67,23 @@ async def on_message(message: cl.Message):
     assert isinstance(thread_id, str)
     assistant_id = cl.user_session.get(constants.ASSISTANT_ID_KEY)
     assert isinstance(assistant_id, str)
+
+    if message.elements:
+        vector_store = await get_or_create_vector_store(client)
+        file_streams = []
+        for element in message.elements:
+            if isinstance(element, cl.File):
+                if element.path:
+                    file_streams.append(open(element.path, "rb"))
+                elif element.content:
+                    if isinstance(element.content, str):
+                        file_streams.append(io.BytesIO(element.content.encode("utf-8")))
+                    else:
+                        file_streams.append(io.BytesIO(element.content))
+        await client.beta.vector_stores.file_batches.upload_and_poll(
+            vector_store_id=vector_store.id,
+            files=file_streams,
+        )
 
     await client.beta.threads.messages.create(
         thread_id=thread_id,
