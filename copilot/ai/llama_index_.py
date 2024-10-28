@@ -2,6 +2,7 @@ import json
 import typing as t
 
 import chainlit as cl
+from chainlit.context import ChainlitContextException
 from llama_index.core import (
     Document,
     Settings,
@@ -25,7 +26,10 @@ def initialize_llama_index() -> None:
     global _llama_index_initialized
     if _llama_index_initialized:
         return
-    chat_profile = cl.user_session.get(constants.CHAT_PROFILES_KEY)
+    try:
+        chat_profile = cl.user_session.get(constants.CHAT_PROFILES_KEY)
+    except ChainlitContextException:
+        chat_profile = constants.ChatProfiles.GPT4oMini
     copilot_settings = CopilotSettings()  # type: ignore
     Settings.llm = OpenAI(
         model=constants.get_model_for_chat_profile(

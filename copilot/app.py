@@ -90,7 +90,7 @@ async def on_message(message: cl.Message):
                 node_parser = MarkdownElementNodeParser(
                     num_workers=os.cpu_count() or 1,
                 )
-                nodes = node_parser.get_nodes_from_documents(results)
+                nodes = await node_parser.aget_nodes_from_documents(results)
                 await step.update()
             async with cl.Step("Inserting nodes into vector store...") as step:
                 vector_store.insert_nodes(nodes)
